@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Geodesic Blockchain AI — Demo</title>
+<style>
+/* ============================================================
+   CSS VARIABLES & RESET
+   ============================================================ */
+:root {
+  --bg:      #0f1117;
+  --panel:   #1a1f2e;
+  --border:  #2d3550;
+  --accent:  #4f7ef8;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --error:   #ef4444;
+  --text:    #e8eaf0;
+  --muted:   #8892b0;
+  --navy:    #1E2761;
+  --panel2:  #141824;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+}
+button { font-family: inherit; cursor: pointer; }
+input  { font-family: inherit; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+header {
+  background: var(--navy);
+  border-bottom: 1px solid var(--border);
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+.header-left { display: flex; flex-direction: column; gap: 2px; }
+.header-title { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: 0.03em; }
+.header-sub   { font-size: 10px; color: var(--muted); }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.live-indicator { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); flex-shrink: 0; transition: background 0.3s; }
+.live-indicator.running .live-dot { background: var(--warning); animation: pulsedot 1.2s infinite; }
+.live-indicator.idle    .live-dot { background: var(--success); }
+@keyframes pulsedot {
+  0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,.5); }
+  50%      { box-shadow: 0 0 0 5px rgba(245,158,11,0); }
+}
+.run-counter { font-size: 11px; color: var(--muted); background: rgba(255,255,255,.06); padding: 3px 8px; border-radius: 4px; }
+
+/* ============================================================
+   DASHBOARD GRID
+   ============================================================ */
+.dashboard {
+  display: grid;
+  grid-template-columns: 300px 400px 1fr;
+  flex: 1;
+  overflow: hidden;
+}
+.col { overflow-y: auto; overflow-x: hidden; }
+.col-params  { border-right: 1px solid var(--border); padding: 12px; }
+.col-run     { border-right: 1px solid var(--border); padding: 14px; }
+.col-results { padding: 14px; }
+
+/* Locked state during run */
+body.locked .col-params input,
+body.locked .col-params button:not(.collapse-btn),
+body.locked .toggle-switch input { pointer-events: none; opacity: .45; }
+body.locked .col-params .module-section { cursor: not-allowed; }
+body.locked #btn-ga-best,
+body.locked #btn-reset-all { pointer-events: none; opacity: .4; }
+
+/* ============================================================
+   LEFT COLUMN — PARAM SECTIONS
+   ============================================================ */
+.params-top { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.params-top button {
+  flex: 1; min-width: 0;
+  padding: 6px 8px; font-size: 11px; font-weight: 600;
+  border: 1px solid var(--border); border-radius: 5px;
+  background: var(--panel); color: var(--muted);
+  transition: all .15s;
+}
+.params-top button:hover { border-color: var(--accent); color: var(--text); }
+
+.module-section {
+  margin-bottom: 6px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.module-section.dirty  { border-color: rgba(245,158,11,.45); }
+.module-section.mod-disabled { opacity: .6; }
+
+.section-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 10px;
+  background: var(--panel);
+  user-select: none;
+}
+.section-header:hover { background: #1e2438; }
+
+.toggle-switch { position: relative; display: inline-block; width: 30px; height: 16px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track {
+  position: absolute; inset: 0;
+  background: #374060; border-radius: 16px;
+  cursor: pointer; transition: background .2s;
+}
+.toggle-track::before {
+  content: ''; position: absolute;
+  left: 2px; top: 2px; width: 12px; height: 12px;
+  background: #fff; border-radius: 50%; transition: transform .2s;
+}
+.toggle-switch input:checked + .toggle-track { background: var(--accent); }
+.toggle-switch input:checked + .toggle-track::before { transform: translateX(14px); }
+.toggle-switch input:disabled + .toggle-track { opacity: .45; cursor: not-allowed; }
+
+.mod-name {
+  flex: 1; font-size: 11px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--text);
+}
+.cache-badge {
+  font-size: 10px; padding: 2px 5px; border-radius: 3px; white-space: nowrap;
+}
+.cache-badge.cached   { color: var(--success); }
+.cache-badge.uncached { color: var(--muted); }
+.cache-badge.dirty-badge { color: var(--warning); }
+.collapse-btn {
+  background: none; border: none; color: var(--muted);
+  font-size: 11px; padding: 0 2px; transition: transform .15s;
+}
+.section-body { padding: 8px 10px 4px; background: var(--panel2); }
+.section-body.collapsed { display: none; }
+
+/* Param rows */
+.param-row { margin-bottom: 9px; }
+.param-row.param-disabled { opacity: .3; pointer-events: none; }
+.param-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+.param-label  { font-size: 11px; color: var(--muted); }
+.reset-btn {
+  background: none; border: none; color: var(--muted); font-size: 12px;
+  padding: 0 2px; opacity: 0; transition: opacity .15s, color .15s; cursor: pointer;
+}
+.param-row:hover .reset-btn { opacity: 1; }
+.reset-btn:hover { color: var(--accent); }
+.param-controls { display: flex; align-items: center; gap: 5px; }
+input[type=range] {
+  flex: 1; height: 4px; cursor: pointer; accent-color: var(--accent);
+  background: transparent;
+}
+input[type=number] {
+  width: 68px; background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); padding: 3px 5px; border-radius: 4px; font-size: 11px;
+  text-align: right;
+}
+input[type=number]:focus { border-color: var(--accent); outline: none; }
+.param-unit { font-size: 10px; color: var(--muted); width: 52px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.params-bottom { margin-top: 10px; }
+#btn-reset-all {
+  width: 100%; padding: 7px; border: 1px solid var(--border);
+  border-radius: 5px; background: transparent; color: var(--muted);
+  font-size: 11px; transition: all .15s;
+}
+#btn-reset-all:hover { border-color: var(--error); color: var(--error); }
+
+/* ============================================================
+   CENTRE COLUMN — RUN CONTROLS
+   ============================================================ */
+.section-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+}
+
+/* Estimate panel */
+.estimate-panel {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px; margin-bottom: 14px;
+}
+.est-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.est-total  { font-size: 22px; font-weight: 700; color: var(--accent); }
+.est-label  { font-size: 11px; color: var(--muted); }
+.est-row    { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; font-size: 11px; }
+.est-mod    { width: 60px; color: var(--muted); }
+.est-bar    { flex: 1; height: 5px; background: #2a3050; border-radius: 3px; overflow: hidden; }
+.est-fill   { height: 100%; border-radius: 3px; transition: width .4s; }
+.est-fill.will-run { background: var(--accent); }
+.est-fill.cached   { background: #3a4460; }
+.est-fill.disabled { background: #222840; }
+.est-time   { width: 36px; text-align: right; color: var(--text); }
+.est-status { width: 68px; font-size: 10px; }
+.est-status.will-run { color: var(--accent); }
+.est-status.cached   { color: var(--success); }
+.est-status.disabled { color: #444; }
+
+/* Warning */
+.est-warning {
+  display: none; margin-top: 8px; padding: 8px 10px;
+  background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3);
+  border-radius: 5px; font-size: 11px; color: var(--warning);
+}
+.est-warning.visible { display: flex; align-items: center; gap: 8px; }
+#btn-fast-params {
+  margin-left: auto; padding: 4px 8px; border: 1px solid var(--warning);
+  border-radius: 4px; background: transparent; color: var(--warning);
+  font-size: 10px; white-space: nowrap; cursor: pointer;
+}
+#btn-fast-params:hover { background: rgba(245,158,11,.15); }
+
+/* Run / Reset buttons */
+.run-controls { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+#btn-run {
+  padding: 11px; border: none; border-radius: 7px;
+  font-size: 14px; font-weight: 700; transition: all .2s;
+}
+#btn-run.idle     { background: var(--accent); color: #fff; }
+#btn-run.idle:hover { background: #3a68e0; }
+#btn-run.running  { background: var(--warning); color: #fff; animation: pulserun 1.4s infinite; }
+#btn-run.complete { background: var(--success); color: #fff; }
+#btn-run:disabled { opacity: .5; cursor: not-allowed; animation: none; }
+@keyframes pulserun { 0%,100%{opacity:1} 50%{opacity:.72} }
+#btn-reset-cache {
+  padding: 7px; border: 1px solid var(--border); border-radius: 6px;
+  background: transparent; color: var(--muted); font-size: 12px; transition: all .15s;
+}
+#btn-reset-cache:hover { border-color: var(--warning); color: var(--warning); }
+
+/* Progress log */
+.progress-log {
+  display: none; background: #090c13; border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 10px; font-family: 'SF Mono','Fira Code',monospace;
+  font-size: 11px; max-height: 260px; overflow-y: auto; margin-top: 2px;
+}
+.progress-log.visible { display: block; }
+.log-line { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 4px; line-height: 1.5; }
+.log-icon { flex-shrink: 0; width: 12px; text-align: center; }
+.log-mod  { color: var(--muted); width: 58px; flex-shrink: 0; }
+.log-time { color: #444; width: 36px; flex-shrink: 0; text-align: right; }
+.log-msg  { color: var(--text); flex: 1; word-break: break-word; }
+.log-line.log-running .log-icon { color: var(--warning); }
+.log-line.log-complete .log-icon { color: var(--success); }
+.log-line.log-cached   .log-icon { color: #555; }
+.log-line.log-skipped  .log-icon { color: #444; }
+.log-line.log-error    .log-icon { color: var(--error); }
+.log-line.log-error    .log-msg  { color: var(--error); }
+.log-error-detail {
+  display: none; margin-top: 3px; padding: 5px 7px; font-size: 10px;
+  background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2);
+  border-radius: 4px; color: #f87171; white-space: pre-wrap; cursor: pointer;
+}
+.log-error-detail.open { display: block; }
+.log-toggle { color: var(--error); text-decoration: underline; cursor: pointer; font-size: 10px; }
+
+/* ============================================================
+   RIGHT COLUMN — RESULTS
+   ============================================================ */
+.tiles-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; margin-bottom: 14px;
+}
+.tile {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 7px; padding: 10px; transition: border-color .2s;
+  min-height: 76px;
+}
+.tile.tile-rerun    { border-color: var(--success); }
+.tile.tile-running  { border-color: var(--warning); animation: pulserun 1.4s infinite; }
+.tile.tile-error    { border-color: var(--error); }
+.tile.tile-disabled { opacity: .35; }
+.tile-name {
+  font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 5px;
+}
+.tile.tile-rerun .tile-name { color: var(--success); }
+.tile.tile-error .tile-name { color: var(--error); }
+.tile-summary { font-size: 11px; color: var(--text); line-height: 1.45; }
+.tile-status  { font-size: 10px; margin-top: 5px; color: var(--muted); }
+
+/* Chart tabs */
+.chart-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+.chart-tab {
+  padding: 4px 9px; font-size: 10px; font-weight: 600;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--muted); cursor: pointer;
+  transition: all .15s; text-transform: uppercase; letter-spacing: .06em;
+}
+.chart-tab:hover { border-color: var(--accent); color: var(--text); }
+.chart-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chart-tab.has-chart { border-color: #3a4460; color: var(--text); }
+.chart-display {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 7px; padding: 12px; min-height: 180px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 14px;
+}
+.chart-display img { max-width: 100%; border-radius: 4px; cursor: zoom-in; display: block; }
+.chart-placeholder { color: var(--muted); font-size: 12px; text-align: center; line-height: 1.6; }
+
+/* Notes */
+.notes-area {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 7px; padding: 10px;
+}
+.notes-area label { font-size: 10px; color: var(--muted); display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .08em; }
+textarea#notes {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); padding: 7px 9px; border-radius: 5px;
+  font-size: 12px; font-family: inherit; resize: vertical; min-height: 70px;
+}
+textarea#notes:focus { border-color: var(--accent); outline: none; }
+.notes-actions { display: flex; gap: 6px; margin-top: 8px; }
+.btn-save {
+  flex: 1; padding: 7px; border: 1px solid var(--accent);
+  border-radius: 5px; background: transparent; color: var(--accent);
+  font-size: 12px; font-weight: 600; transition: all .15s;
+}
+.btn-save:hover { background: var(--accent); color: #fff; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header>
+  <div class="header-left">
+    <span class="header-title">GEODESIC BLOCKCHAIN AI — Interactive Demo</span>
+    <span class="header-sub">Patent: "Geodesic Blockchain AI for Optimized Distributed Ledger Consensus and Data Routing"</span>
+  </div>
+  <div class="header-right">
+    <div class="live-indicator idle" id="live-indicator">
+      <span class="live-dot"></span>
+      <span id="live-label">Ready</span>
+    </div>
+    <span class="run-counter" id="run-counter">Run #0</span>
+  </div>
+</header>
+
+<!-- ============================================================
+     DASHBOARD
+     ============================================================ -->
+<div class="dashboard">
+
+  <!-- LEFT COLUMN: Parameters -->
+  <aside class="col col-params" id="col-params">
+    <div class="params-top">
+      <button id="btn-ga-best" title="Load best parameters found by the Genetic Algorithm">⚡ Load GA best</button>
+      <button id="btn-expand-all">Expand all</button>
+      <button id="btn-collapse-all">Collapse all</button>
+    </div>
+    <!-- module sections injected here by JS -->
+    <div id="param-sections"></div>
+    <div class="params-bottom">
+      <button id="btn-reset-all">↺ Reset all to defaults</button>
+    </div>
+  </aside>
+
+  <!-- CENTRE COLUMN: Run Controls -->
+  <main class="col col-run">
+    <div class="section-label">⏱ Runtime estimate</div>
+    <div class="estimate-panel">
+      <div class="est-header">
+        <span class="est-label">Total:</span>
+        <span class="est-total" id="est-total">—</span>
+      </div>
+      <div id="est-rows">
+        <!-- injected by JS -->
+      </div>
+      <div class="est-warning" id="est-warning">
+        <span id="est-warning-text"></span>
+        <button id="btn-fast-params">Use fast settings</button>
+      </div>
+    </div>
+
+    <div class="section-label">▶ Simulation</div>
+    <div class="run-controls">
+      <button id="btn-run" class="idle">▶&nbsp;&nbsp;Run simulation</button>
+      <button id="btn-reset-cache">↺&nbsp;&nbsp;Reset cache</button>
+    </div>
+
+    <div class="section-label" id="log-label" style="display:none">Progress</div>
+    <div class="progress-log" id="progress-log"></div>
+  </main>
+
+  <!-- RIGHT COLUMN: Results -->
+  <section class="col col-results">
+    <div class="section-label">Module results</div>
+    <div class="tiles-grid" id="tiles-grid">
+      <!-- injected by JS -->
+    </div>
+
+    <div class="section-label">Charts</div>
+    <div class="chart-tabs" id="chart-tabs"></div>
+    <div class="chart-display" id="chart-display">
+      <div class="chart-placeholder">Run the simulation to see charts</div>
+    </div>
+
+    <div class="notes-area">
+      <label for="notes">Notes about this run</label>
+      <textarea id="notes" placeholder="Add observations, parameter rationale, results commentary…"></textarea>
+      <div class="notes-actions">
+        <button class="btn-save" id="btn-save">💾&nbsp; Save &amp; download results</button>
+      </div>
+    </div>
+  </section>
+
+</div><!-- .dashboard -->
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+'use strict';
+
+/* ============================================================
+   1. STATE
+   ============================================================ */
+let schema       = null;   // /api/schema response
+let currentParams = {};    // live param values
+let moduleStates  = {};    // {module: bool} enabled/disabled
+let isRunning     = false;
+let runCount      = 0;
+let fastParamsCache = null; // suggestion from last estimate
+let abortCtrl    = null;   // for cancelling fetch stream
+let estimateDebounce = null;
+
+// Per-module tile state for the results grid
+let tileData = {};  // {module: {status, summary}}
+// Chart URLs available per module
+let chartUrls = {}; // {module: url}
+// Currently active chart tab
+let activeChartTab = null;
+
+/* ============================================================
+   2. API HELPERS
+   ============================================================ */
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(path, opts);
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
+  return res.json();
+}
+
+/* ============================================================
+   3. INIT
+   ============================================================ */
+async function init() {
+  try {
+    const [schemaData, defaultsData, statusData] = await Promise.all([
+      apiFetch('/api/schema'),
+      apiFetch('/api/defaults'),
+      apiFetch('/api/status'),
+    ]);
+    schema        = schemaData;
+    currentParams = defaultsData;
+
+    // Init module states from registry
+    for (const [mod, info] of Object.entries(schema.modules)) {
+      moduleStates[mod] = info.enabled;
+    }
+
+    renderParamSections(statusData);
+    renderTilesGrid();
+    renderChartTabs();
+    applyStatusData(statusData);
+
+    // Restore last results if available
+    try {
+      const results = await apiFetch('/api/results');
+      if (results && results.summaries) applyResults(results);
+    } catch (_) { /* no results yet */ }
+
+    // Initial estimate
+    refreshEstimate();
+  } catch (e) {
+    console.error('Init error:', e);
+  }
+}
+
+/* ============================================================
+   4. PARAMETER RENDERING
+   ============================================================ */
+function getStep(spec) {
+  if (spec.type === 'int') return 1;
+  const range = spec.max - spec.min;
+  if (range <= 0.5)  return 0.001;
+  if (range <= 2)    return 0.01;
+  if (range <= 10)   return 0.05;
+  if (range <= 100)  return 1;
+  return 10;
+}
+
+function isLogScale(spec) {
+  return spec.type === 'float' && spec.min > 0 && (spec.max / spec.min) > 200;
+}
+
+function realToSlider(val, spec) {
+  if (isLogScale(spec)) {
+    const t = Math.log(val / spec.min) / Math.log(spec.max / spec.min);
+    return Math.round(t * 1000);
+  }
+  return val;
+}
+
+function sliderToReal(sv, spec) {
+  if (isLogScale(spec)) {
+    const t = sv / 1000;
+    return spec.min * Math.pow(spec.max / spec.min, t);
+  }
+  return sv;
+}
+
+function formatVal(val, spec) {
+  if (spec.type === 'int') return String(Math.round(val));
+  if (Math.abs(val) < 0.001 || Math.abs(val) >= 10000) return val.toExponential(3);
+  const step = getStep(spec);
+  const dp = step < 0.01 ? 4 : step < 0.1 ? 3 : step < 1 ? 2 : 1;
+  return val.toFixed(dp);
+}
+
+function renderParamSections(statusData) {
+  const container = document.getElementById('param-sections');
+  container.innerHTML = '';
+  const order = schema.order;
+
+  for (const mod of order) {
+    const modInfo  = schema.modules[mod];
+    const params   = Object.entries(schema.params).filter(([,s]) => s.module === mod);
+    const isEnabled = moduleStates[mod] !== false;
+    const isRequired = modInfo.required;
+
+    // Status badge
+    const cached = statusData?.modules?.[mod]?.cached;
+    const badgeCls  = cached ? 'cached' : 'uncached';
+    const badgeTxt  = cached ? '✓ cached' : '· uncached';
+
+    const section = document.createElement('div');
+    section.className = `module-section${isEnabled ? '' : ' mod-disabled'}`;
+    section.dataset.module = mod;
+
+    section.innerHTML = `
+      <div class="section-header">
+        <label class="toggle-switch" title="${isRequired ? 'Required — cannot disable' : (isEnabled ? 'Disable module' : 'Enable module')}">
+          <input type="checkbox" ${isEnabled ? 'checked' : ''} ${isRequired ? 'disabled' : ''} data-mod="${mod}">
+          <span class="toggle-track"></span>
+        </label>
+        <span class="mod-name">${modInfo.label}</span>
+        <span class="cache-badge ${badgeCls}" data-cache-mod="${mod}">${badgeTxt}</span>
+        <button class="collapse-btn" title="Toggle">▾</button>
+      </div>
+      <div class="section-body" data-body="${mod}">
+        ${params.map(([name, spec]) => renderParamRow(name, spec)).join('')}
+      </div>`;
+
+    // Toggle enable/disable
+    section.querySelector('input[type=checkbox]').addEventListener('change', e => {
+      if (isRequired) return;
+      const enabled = e.target.checked;
+      moduleStates[mod] = enabled;
+      section.classList.toggle('mod-disabled', !enabled);
+      section.querySelectorAll('.param-row').forEach(r => r.classList.toggle('param-disabled', !enabled));
+      updateTileDisabledState(mod, enabled);
+      scheduleEstimate();
+    });
+
+    // Collapse/expand
+    const hdr  = section.querySelector('.section-header');
+    const body = section.querySelector('.section-body');
+    const btn  = section.querySelector('.collapse-btn');
+    hdr.addEventListener('click', e => {
+      if (e.target.closest('.toggle-switch') || e.target.closest('input')) return;
+      body.classList.toggle('collapsed');
+      btn.style.transform = body.classList.contains('collapsed') ? 'rotate(-90deg)' : '';
+    });
+
+    // Wire sliders & inputs
+    params.forEach(([name, spec]) => wireParam(section, name, spec));
+
+    if (!isEnabled) {
+      section.querySelectorAll('.param-row').forEach(r => r.classList.add('param-disabled'));
+    }
+
+    container.appendChild(section);
+  }
+}
+
+function renderParamRow(name, spec) {
+  const val  = currentParams[name] ?? spec.default;
+  const step = getStep(spec);
+  const log  = isLogScale(spec);
+  const sliderMin  = log ? 0 : spec.min;
+  const sliderMax  = log ? 1000 : spec.max;
+  const sliderStep = log ? 1 : step;
+  const sliderVal  = realToSlider(val, spec);
+  const numVal     = formatVal(val, spec);
+
+  return `<div class="param-row" data-param="${name}">
+    <div class="param-header">
+      <span class="param-label">${spec.label}</span>
+      <button class="reset-btn" title="Reset to default (${formatVal(spec.default, spec)})">↺</button>
+    </div>
+    <div class="param-controls">
+      <input type="range"   min="${sliderMin}" max="${sliderMax}" step="${sliderStep}" value="${sliderVal}" data-slider="${name}">
+      <input type="number"  min="${spec.min}"  max="${spec.max}"  step="${step}"       value="${numVal}"    data-num="${name}">
+      ${spec.unit ? `<span class="param-unit">${spec.unit}</span>` : ''}
+    </div>
+  </div>`;
+}
+
+function wireParam(section, name, spec) {
+  const row     = section.querySelector(`[data-param="${name}"]`);
+  if (!row) return;
+  const slider  = row.querySelector(`[data-slider="${name}"]`);
+  const numInp  = row.querySelector(`[data-num="${name}"]`);
+  const resetBtn = row.querySelector('.reset-btn');
+
+  function setVal(real) {
+    const clamped = Math.max(spec.min, Math.min(spec.max, real));
+    currentParams[name] = spec.type === 'int' ? Math.round(clamped) : clamped;
+    slider.value = realToSlider(clamped, spec);
+    numInp.value = formatVal(clamped, spec);
+    scheduleEstimate();
+  }
+
+  slider.addEventListener('input', () => {
+    setVal(sliderToReal(parseFloat(slider.value), spec));
+  });
+  numInp.addEventListener('change', () => {
+    const v = parseFloat(numInp.value);
+    if (!isNaN(v)) setVal(v);
+  });
+  resetBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    setVal(spec.default);
+  });
+}
+
+/* ============================================================
+   5. ESTIMATE
+   ============================================================ */
+function scheduleEstimate() {
+  clearTimeout(estimateDebounce);
+  estimateDebounce = setTimeout(refreshEstimate, 300);
+}
+
+async function refreshEstimate() {
+  try {
+    const body = { params: currentParams, module_states: moduleStates };
+    const data = await apiFetch('/api/estimate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    renderEstimate(data);
+
+    // Update dirty badges on module sections
+    const dirty = new Set(data.dirty_modules || []);
+    document.querySelectorAll('.module-section').forEach(sec => {
+      const mod = sec.dataset.module;
+      sec.classList.toggle('dirty', dirty.has(mod));
+      const badge = sec.querySelector(`[data-cache-mod="${mod}"]`);
+      if (!badge) return;
+      if (!moduleStates[mod]) {
+        badge.className = 'cache-badge uncached'; badge.textContent = '· disabled';
+      } else if (dirty.has(mod)) {
+        badge.className = 'cache-badge dirty-badge'; badge.textContent = '↻ will run';
+      } else {
+        badge.className = 'cache-badge cached'; badge.textContent = '✓ cached';
+      }
+    });
+  } catch (e) { console.warn('Estimate error:', e); }
+}
+
+function renderEstimate(data) {
+  const order  = schema?.order || [];
+  const bdwn   = data.breakdown || {};
+  const dirty  = new Set(data.dirty_modules || []);
+  const total  = data.total_seconds || 0;
+
+  document.getElementById('est-total').textContent =
+    total < 1 ? '< 1s' : total < 60 ? `~${Math.round(total)}s` : `~${(total/60).toFixed(1)} min`;
+
+  const maxT = Math.max(...Object.values(bdwn), 1);
+  const rows = document.getElementById('est-rows');
+  rows.innerHTML = order.map(mod => {
+    const t    = bdwn[mod] ?? 0;
+    const enabled = moduleStates[mod] !== false;
+    const isCached  = !dirty.has(mod) && enabled;
+    const isDisabled = !enabled;
+    const pct  = isDisabled ? 5 : Math.round((t / maxT) * 100);
+    const fillCls = isDisabled ? 'disabled' : isCached ? 'cached' : 'will-run';
+    const statusCls = isDisabled ? 'disabled' : isCached ? 'cached' : 'will-run';
+    const statusTxt = isDisabled ? '— disabled' : isCached ? '✓ cached' : '↻ will run';
+    const tTxt = isDisabled ? '—' : t > 0 ? `${t.toFixed(1)}s` : '—';
+    return `<div class="est-row">
+      <span class="est-mod">${mod}</span>
+      <div class="est-bar"><div class="est-fill ${fillCls}" style="width:${pct}%"></div></div>
+      <span class="est-time">${tTxt}</span>
+      <span class="est-status ${statusCls}">${statusTxt}</span>
+    </div>`;
+  }).join('');
+
+  fastParamsCache = data.fast_params || null;
+  const warn = document.getElementById('est-warning');
+  const warnTxt = document.getElementById('est-warning-text');
+  if (data.warning) {
+    warn.classList.add('visible');
+    warnTxt.textContent = data.warning;
+  } else {
+    warn.classList.remove('visible');
+  }
+}
+
+/* ============================================================
+   6. RUN (fetch-based SSE)
+   ============================================================ */
+document.getElementById('btn-run').addEventListener('click', async () => {
+  if (isRunning) { cancelRun(); return; }
+  startRun();
+});
+
+document.getElementById('btn-reset-cache').addEventListener('click', async () => {
+  await apiFetch('/api/reset', { method: 'POST' });
+  // Reset tile states
+  Object.keys(tileData).forEach(mod => setTileState(mod, 'idle', ''));
+  chartUrls = {};
+  renderChartTabs();
+  document.getElementById('chart-display').innerHTML = '<div class="chart-placeholder">Run the simulation to see charts</div>';
+  refreshEstimate();
+});
+
+document.getElementById('btn-fast-params').addEventListener('click', () => {
+  if (!fastParamsCache) return;
+  Object.assign(currentParams, fastParamsCache);
+  // Re-render sliders with new values
+  for (const [name, spec] of Object.entries(schema.params)) {
+    updateSliderDisplay(name, spec, currentParams[name]);
+  }
+  scheduleEstimate();
+});
+
+document.getElementById('btn-ga-best').addEventListener('click', async () => {
+  try {
+    const data = await apiFetch('/api/best_params');
+    if (data.params) {
+      Object.assign(currentParams, data.params);
+      for (const [name, spec] of Object.entries(schema.params)) {
+        if (name in data.params) updateSliderDisplay(name, spec, currentParams[name]);
+      }
+      scheduleEstimate();
+      const src = data.source === 'defaults' ? '(no GA run yet — loaded defaults)' : `(fitness ${data.fitness?.toFixed(4)}, +${data.improvement_pct?.toFixed(1)}%)`;
+      addLogLine({ module: 'GA best', status: 'complete', elapsed: 0, summary: `Loaded ${src}` });
+    }
+  } catch (e) { alert('Could not load best_params: ' + e.message); }
+});
+
+document.getElementById('btn-reset-all').addEventListener('click', () => {
+  for (const [name, spec] of Object.entries(schema.params)) {
+    currentParams[name] = spec.default;
+    updateSliderDisplay(name, spec, spec.default);
+  }
+  scheduleEstimate();
+});
+
+function updateSliderDisplay(name, spec, val) {
+  const slider = document.querySelector(`[data-slider="${name}"]`);
+  const numInp = document.querySelector(`[data-num="${name}"]`);
+  if (slider) slider.value = realToSlider(val, spec);
+  if (numInp) numInp.value = formatVal(val, spec);
+}
+
+document.getElementById('btn-expand-all').addEventListener('click', () => {
+  document.querySelectorAll('.section-body').forEach(b => { b.classList.remove('collapsed'); });
+  document.querySelectorAll('.collapse-btn').forEach(b => { b.style.transform = ''; });
+});
+
+document.getElementById('btn-collapse-all').addEventListener('click', () => {
+  document.querySelectorAll('.section-body').forEach(b => { b.classList.add('collapsed'); });
+  document.querySelectorAll('.collapse-btn').forEach(b => { b.style.transform = 'rotate(-90deg)'; });
+});
+
+async function startRun() {
+  isRunning = true;
+  runCount++;
+  document.getElementById('run-counter').textContent = `Run #${runCount}`;
+  setRunButtonState('running');
+  setLiveState('running');
+  lockUI(true);
+
+  const log = document.getElementById('progress-log');
+  const lbl = document.getElementById('log-label');
+  log.innerHTML = '';
+  log.classList.add('visible');
+  lbl.style.display = '';
+  addLogLine({ module: 'pipeline', status: 'running', elapsed: 0, summary: 'Starting pipeline…' });
+
+  // Reset all tiles to idle
+  schema.order.forEach(mod => setTileState(mod, 'idle', ''));
+
+  abortCtrl = new AbortController();
+  let sseBuffer = '';
+
+  try {
+    const res = await fetch('/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ params: currentParams, module_states: moduleStates, notes: '' }),
+      signal: abortCtrl.signal,
+    });
+
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      sseBuffer += decoder.decode(value, { stream: true });
+      const parts = sseBuffer.split('\n\n');
+      sseBuffer = parts.pop(); // keep incomplete chunk
+      for (const part of parts) {
+        for (const line of part.split('\n')) {
+          if (line.startsWith('data: ')) {
+            try {
+              const evt = JSON.parse(line.slice(6));
+              handleSSEEvent(evt);
+            } catch (_) {}
+          }
+        }
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      addLogLine({ module: 'pipeline', status: 'error', elapsed: 0, summary: String(e) });
+    } else {
+      addLogLine({ module: 'pipeline', status: 'skipped', elapsed: 0, summary: 'Cancelled by user' });
+    }
+    finishRun(false);
+  }
+}
+
+function cancelRun() {
+  if (abortCtrl) { abortCtrl.abort(); abortCtrl = null; }
+}
+
+function handleSSEEvent(evt) {
+  if (evt.status === 'done') {
+    addLogLine({ module: 'pipeline', status: 'complete', elapsed: evt.total_seconds || 0, summary: `Done — ${(evt.total_seconds||0).toFixed(1)}s total` });
+    finishRun(true);
+    loadResultsAfterRun();
+    return;
+  }
+  const mod = evt.module;
+  if (!mod) return;
+  setTileState(mod, evt.status, evt.summary || '');
+  addLogLine(evt);
+}
+
+function addLogLine(evt) {
+  const log = document.getElementById('progress-log');
+  const icons = { running: '↻', complete: '✓', cached: '·', skipped: '·', error: '✕', done: '✓' };
+  const icon = icons[evt.status] || '·';
+  const elapsed = evt.elapsed != null ? `${evt.elapsed.toFixed(1)}s` : '';
+  const line = document.createElement('div');
+  line.className = `log-line log-${evt.status}`;
+
+  const mod  = evt.module || '';
+  const disp = mod === 'pipeline' ? '' : mod;
+
+  if (evt.status === 'error') {
+    line.innerHTML = `<span class="log-icon">${icon}</span><span class="log-mod">${disp}</span><span class="log-time">${elapsed}</span><span class="log-msg">${escHtml(evt.summary || '')} <span class="log-toggle" onclick="this.nextElementSibling.classList.toggle('open')">[traceback]</span><div class="log-error-detail">${escHtml(evt.message || '')}</div></span>`;
+  } else {
+    line.innerHTML = `<span class="log-icon">${icon}</span><span class="log-mod">${disp}</span><span class="log-time">${elapsed}</span><span class="log-msg">${escHtml(evt.summary || '')}</span>`;
+  }
+
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+function finishRun(success) {
+  isRunning = false;
+  abortCtrl = null;
+  setRunButtonState(success ? 'complete' : 'idle');
+  setLiveState('idle');
+  lockUI(false);
+  refreshEstimate();
+  if (success) {
+    setTimeout(() => setRunButtonState('idle'), 3000);
+  }
+}
+
+async function loadResultsAfterRun() {
+  try {
+    const results = await apiFetch('/api/results');
+    if (results) applyResults(results);
+  } catch (e) { console.warn('Could not load results:', e); }
+}
+
+function setRunButtonState(state) {
+  const btn = document.getElementById('btn-run');
+  btn.className = state;
+  if (state === 'idle')     btn.innerHTML = '▶&nbsp;&nbsp;Run simulation';
+  if (state === 'running')  btn.innerHTML = '⏸&nbsp;&nbsp;Running… (click to cancel)';
+  if (state === 'complete') btn.innerHTML = '✓&nbsp;&nbsp;Complete';
+}
+
+function setLiveState(state) {
+  const ind = document.getElementById('live-indicator');
+  const lbl = document.getElementById('live-label');
+  ind.className = `live-indicator ${state}`;
+  lbl.textContent = state === 'running' ? 'Live' : 'Ready';
+}
+
+function lockUI(locked) {
+  document.body.classList.toggle('locked', locked);
+  document.getElementById('btn-run').disabled = false; // run btn always clickable (cancel)
+  document.getElementById('btn-reset-cache').disabled = locked;
+}
+
+/* ============================================================
+   7. RESULTS — TILES & CHARTS
+   ============================================================ */
+function renderTilesGrid() {
+  const grid = document.getElementById('tiles-grid');
+  grid.innerHTML = (schema?.order || []).map(mod => {
+    const label = schema.modules[mod]?.label || mod;
+    return `<div class="tile" id="tile-${mod}">
+      <div class="tile-name">${label}</div>
+      <div class="tile-summary" id="tile-summary-${mod}">—</div>
+      <div class="tile-status"  id="tile-status-${mod}">not run</div>
+    </div>`;
+  }).join('');
+}
+
+function setTileState(mod, status, summary) {
+  const tile = document.getElementById(`tile-${mod}`);
+  if (!tile) return;
+  tileData[mod] = { status, summary };
+
+  tile.className = 'tile';
+  if (status === 'complete')                tile.classList.add('tile-rerun');
+  else if (status === 'running')            tile.classList.add('tile-running');
+  else if (status === 'error')              tile.classList.add('tile-error');
+  else if (status === 'skipped' || status === 'disabled') tile.classList.add('tile-disabled');
+
+  const sum  = document.getElementById(`tile-summary-${mod}`);
+  const stat = document.getElementById(`tile-status-${mod}`);
+  if (sum)  sum.textContent  = summary || '—';
+  if (stat) stat.textContent = statusLabel(status);
+}
+
+function statusLabel(s) {
+  return { idle: 'not run', running: '⏳ running…', complete: '✓ complete',
+           cached: '✓ cached', error: '✕ error', skipped: '· disabled', disabled: '· disabled' }[s] || s;
+}
+
+function updateTileDisabledState(mod, enabled) {
+  const tile = document.getElementById(`tile-${mod}`);
+  if (!tile) return;
+  if (!enabled) {
+    tile.className = 'tile tile-disabled';
+    const stat = document.getElementById(`tile-status-${mod}`);
+    if (stat) stat.textContent = '· disabled';
+  } else {
+    tile.className = 'tile';
+    const stat = document.getElementById(`tile-status-${mod}`);
+    if (stat) stat.textContent = 'not run';
+  }
+}
+
+function applyResults(results) {
+  const summaries = results.summaries || {};
+  const charts    = results.charts    || {};
+
+  for (const mod of (schema?.order || [])) {
+    const summary = summaries[mod] || '';
+    const isError = summary.startsWith('ERROR:');
+    const status  = isError ? 'error' : (summary ? 'complete' : 'idle');
+    setTileState(mod, status, summary);
+
+    // Collect first chart for each module
+    const modCharts = charts[mod];
+    if (Array.isArray(modCharts) && modCharts.length > 0) {
+      chartUrls[mod] = '/outputs/' + modCharts[0].split('/').pop();
+    } else if (typeof modCharts === 'string') {
+      chartUrls[mod] = '/outputs/' + modCharts.split('/').pop();
+    }
+  }
+
+  // Restore notes
+  if (results.notes) document.getElementById('notes').value = results.notes;
+
+  renderChartTabs();
+  // Show first available chart
+  if (!activeChartTab) {
+    const first = (schema?.order || []).find(m => chartUrls[m]);
+    if (first) showChart(first);
+  }
+}
+
+/* ============================================================
+   8. CHART TABS
+   ============================================================ */
+function renderChartTabs() {
+  const tabs = document.getElementById('chart-tabs');
+  tabs.innerHTML = (schema?.order || []).map(mod => {
+    const label = schema.modules[mod]?.label || mod;
+    const has   = !!chartUrls[mod];
+    return `<button class="chart-tab${has ? ' has-chart' : ''}" data-chart-mod="${mod}" onclick="showChart('${mod}')">${label}</button>`;
+  }).join('');
+
+  // Re-apply active
+  if (activeChartTab) {
+    const btn = tabs.querySelector(`[data-chart-mod="${activeChartTab}"]`);
+    if (btn) btn.classList.add('active');
+  }
+}
+
+function showChart(mod) {
+  activeChartTab = mod;
+
+  // Update tab highlights
+  document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+  const btn = document.querySelector(`[data-chart-mod="${mod}"]`);
+  if (btn) btn.classList.add('active');
+
+  const display = document.getElementById('chart-display');
+  const url = chartUrls[mod];
+  if (!url) {
+    const label = schema?.modules[mod]?.label || mod;
+    display.innerHTML = `<div class="chart-placeholder"><strong>${label}</strong><br>No chart available yet.<br>Run the simulation to generate results.</div>`;
+    return;
+  }
+
+  // Lazy-load image
+  display.innerHTML = `<div class="chart-placeholder">Loading…</div>`;
+  const img = new Image();
+  img.onload  = () => { display.innerHTML = ''; display.appendChild(img); };
+  img.onerror = () => { display.innerHTML = `<div class="chart-placeholder">Could not load chart: ${url}</div>`; };
+  img.src     = url + '?t=' + Date.now(); // cache-bust on each click
+  img.alt     = `${mod} chart`;
+  img.title   = 'Click to open full size';
+  img.addEventListener('click', () => window.open(url, '_blank'));
+}
+
+/* ============================================================
+   9. STATUS DATA (on load — restore cache badges)
+   ============================================================ */
+function applyStatusData(statusData) {
+  if (!statusData?.modules) return;
+  for (const [mod, info] of Object.entries(statusData.modules)) {
+    const badge = document.querySelector(`[data-cache-mod="${mod}"]`);
+    if (!badge) continue;
+    if (!moduleStates[mod]) {
+      badge.className = 'cache-badge uncached';
+      badge.textContent = '· disabled';
+    } else if (info.cached) {
+      badge.className = 'cache-badge cached';
+      badge.textContent = '✓ cached';
+    } else {
+      badge.className = 'cache-badge uncached';
+      badge.textContent = '· uncached';
+    }
+  }
+}
+
+/* ============================================================
+   10. NOTES & SAVE
+   ============================================================ */
+document.getElementById('btn-save').addEventListener('click', async () => {
+  const notes = document.getElementById('notes').value;
+  try {
+    await apiFetch('/api/results/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes }),
+    });
+  } catch (_) {}
+  // Trigger download
+  const a = document.createElement('a');
+  a.href     = '/api/results/download';
+  a.download = 'geodesic_results.json';
+  a.click();
+});
+
+/* ============================================================
+   11. UTILITY
+   ============================================================ */
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* ============================================================
+   12. BOOT
+   ============================================================ */
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

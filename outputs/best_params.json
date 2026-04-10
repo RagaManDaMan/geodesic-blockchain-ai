@@ -1,0 +1,28 @@
+{
+  "fitness": 0.6512005860977649,
+  "default_fitness": 0.5860189677866695,
+  "improvement_pct": 11.122783031627682,
+  "parameters": {
+    "dqn_alpha": 0.0030804709109015917,
+    "dqn_gamma": 0.9900566076168203,
+    "dqn_epsilon": 0.3039760444541738,
+    "curl_penalty": 1.8434471771778123,
+    "green_penalty": 4.934527021745318,
+    "fee_rate": 5.861320436156328e-07,
+    "mint_scale": 7.124481624518088,
+    "filter_cutoff": 0.1626661946079128
+  },
+  "metrics": {
+    "latency_improvement": 0.681799305022607,
+    "supply_stability": 0.9975301261571354,
+    "curl_reduction": 0.1710853366198717,
+    "compute_cost": 0.12104021615982419,
+    "avg_hop_latency": 87.72742811701266,
+    "avg_comb_latency": 27.914928595412714,
+    "supply_std": 2469.873842864574
+  },
+  "ga_config": {
+    "pop_size": 30,
+    "n_gen": 20
+  }
+}

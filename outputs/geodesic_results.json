@@ -1,0 +1,146 @@
+{
+  "run_id": "2026-04-09T15:27:30",
+  "parameters": {
+    "subdivisions": 2,
+    "seed": 42,
+    "learning_rate": 0.0030804709109015917,
+    "gamma": 0.99,
+    "epsilon_start": 0.3039760444541738,
+    "episodes": 800,
+    "steps_per_ep": 25,
+    "arrival_rate": 4.0,
+    "sim_steps": 200,
+    "capacity_scale": 0.1,
+    "curl_threshold": 1.0,
+    "curl_penalty": 1.8434471771778123,
+    "div_threshold": 0.5,
+    "sink_penalty": 4.934527021745318,
+    "source_penalty": 3.0,
+    "initial_supply": 1000000,
+    "fee_rate": 5.861320436156328e-07,
+    "ema_alpha": 0.2,
+    "mint_threshold": 1.5,
+    "burn_threshold": -1.5,
+    "mint_scale": 712,
+    "arrival_period": 20,
+    "arrival_amp": 2.0,
+    "fir_cutoff": 0.1626661946079128,
+    "ga_population": 30,
+    "ga_generations": 20,
+    "ga_cx_prob": 0.5,
+    "ga_mut_prob": 0.2,
+    "ga_w_latency": 0.35,
+    "ga_w_stability": 0.4,
+    "ga_w_curl": 0.15,
+    "ga_w_cost": 0.1
+  },
+  "dirty_modules": [
+    "dqn",
+    "traffic",
+    "stokes",
+    "green",
+    "comcoin",
+    "signal",
+    "genetic"
+  ],
+  "module_states": {
+    "mesh": true,
+    "dqn": true,
+    "traffic": true,
+    "stokes": true,
+    "green": true,
+    "comcoin": true,
+    "signal": true,
+    "genetic": true
+  },
+  "results": {
+    "mesh": {
+      "n_nodes": 162,
+      "n_edges": 480,
+      "n_faces": 320,
+      "subdivisions": 2
+    },
+    "dqn": {
+      "success_rate": 1.0,
+      "latency_improvement_pct": 12.08,
+      "episodes": 800
+    },
+    "traffic": {
+      "avg_utilisation": 1.76,
+      "peak_active_flows": 49,
+      "latency_sp_improvement_pct": 64.18
+    },
+    "stokes": {
+      "vortex_faces": 70,
+      "mean_curl": 0.663,
+      "max_curl": 3.0,
+      "latency_improvement_pct": 42.78
+    },
+    "green": {
+      "sink_nodes": 26,
+      "source_nodes": 27,
+      "mean_abs_divergence": 0.393,
+      "green_improvement_pct": 7.16,
+      "combined_improvement_pct": 24.62
+    },
+    "comcoin": {
+      "mint_events": 14,
+      "burn_events": 2,
+      "net_change_pct": 0.193,
+      "supply_std_pct": 0.045,
+      "final_supply": 1001933.0
+    },
+    "signal": {
+      "dominant_period_steps": 20.0,
+      "dominant_freq": 0.05,
+      "freq_error_pct": 0.0,
+      "fir_noise_reduction_pct": 62.3,
+      "ema_noise_reduction_pct": 69.5
+    },
+    "genetic": {
+      "best_fitness": 0.6512,
+      "default_fitness": 0.586,
+      "improvement_pct": 11.12,
+      "latency_improvement_pct": 68.2,
+      "supply_stability": 0.9975
+    }
+  },
+  "summaries": {
+    "mesh": "162 nodes, 480 edges, 320 faces (subdiv=2)",
+    "dqn": "Success 100%, latency +12.1% vs hop-SP",
+    "traffic": "Peak 49 flows, avg util 1.76, latency-SP +64.2%",
+    "stokes": "70 vortex faces, curl-aware +42.8% vs hop-SP",
+    "green": "26 sinks, 27 sources; green +7.2%, combined +24.6%",
+    "comcoin": "14 mints, 2 burns, net +0.193%, std 0.045%",
+    "signal": "Fourier peak T=20.0 steps (0.0% error), FIR \u221262% noise",
+    "genetic": "GA best 0.6512 (+11.1% vs default 0.5860)"
+  },
+  "charts": {
+    "mesh": [
+      "/Users/ragavan/Documents/claudecode/geodesic_sandbox/outputs/mesh_chart.png"
+    ],
+    "dqn": [
+      "/Users/ragavan/Documents/claudecode/geodesic_sandbox/outputs/dqn_chart.png"
+    ],
+    "traffic": [
+      "/Users/ragavan/Documents/claudecode/geodesic_sandbox/outputs/traffic_chart.png"
+    ],
+    "stokes": [
+      "/Users/ragavan/Documents/claudecode/geodesic_sandbox/outputs/stokes_chart.png"
+    ],
+    "green": [
+      "/Users/ragavan/Documents/claudecode/geodesic_sandbox/outputs/green_chart.png"
+    ],
+    "comcoin": [
+      "/Users/ragavan/Documents/claudecode/geodesic_sandbox/outputs/comcoin_chart.png"
+    ],
+    "signal": [
+      "/Users/ragavan/Documents/claudecode/geodesic_sandbox/outputs/signal_chart.png"
+    ],
+    "genetic": [
+      "/Users/ragavan/Documents/claudecode/geodesic_sandbox/outputs/genetic_chart.png"
+    ]
+  },
+  "total_runtime_seconds": 124.13,
+  "notes": ""
+}

@@ -1,0 +1,47 @@
+# ── Python ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Virtual environments ────────────────────────────────
+venv/
+.venv/
+env/
+.env
+
+# ── Pipeline cache (large pickle files) ────────────────
+outputs/cache/*.pkl
+outputs/cache/manifest.json
+
+# ── Generated chart images (reproduced on each run) ────
+outputs/*.png
+
+# ── Results JSON is kept (useful for git history) ──────
+# outputs/geodesic_results.json   ← intentionally tracked
+# outputs/best_params.json        ← intentionally tracked
+
+# ── macOS ───────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── Claude Code ─────────────────────────────────────────
+.claude/
+
+# ── IDE ─────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── Jupyter ─────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Logic Pro / audio ───────────────────────────────────
+*.logicx/
