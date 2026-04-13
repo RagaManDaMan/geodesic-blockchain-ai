@@ -318,6 +318,11 @@ def index():
     """Serve the single-page frontend."""
     return send_from_directory(FRONTEND_DIR, "index.html")
 
+@app.route("/<path:filename>")
+def frontend_static(filename):
+    """Serve static assets from the frontend directory (JS, etc.)."""
+    return send_from_directory(FRONTEND_DIR, filename)
+
 
 # ---------------------------------------------------------------------------
 # GET /api/best_params

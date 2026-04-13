@@ -334,6 +334,57 @@ textarea#notes:focus { border-color: var(--accent); outline: none; }
   font-size: 12px; font-weight: 600; transition: all .15s;
 }
 .btn-save:hover { background: var(--accent); color: #fff; }
+
+/* ── Diagnostic Listener ─────────────────────────────────── */
+.listener-panel {
+  margin-top: 12px; padding: 12px; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 8px;
+}
+.listener-panel .section-label { margin-top: 0; }
+.listener-controls { display: flex; gap: 8px; margin: 8px 0; }
+.btn-listen, .btn-stop-audio {
+  flex: 1; padding: 8px 12px; border-radius: 5px; font-size: 12px;
+  font-weight: 600; border: 1px solid; cursor: pointer; transition: all .15s;
+}
+.btn-listen {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.btn-listen:hover { background: #6b93ff; }
+.btn-listen:disabled { opacity: .4; cursor: not-allowed; }
+.btn-stop-audio {
+  background: transparent; color: var(--error); border-color: var(--error);
+}
+.btn-stop-audio:hover { background: var(--error); color: #fff; }
+.btn-stop-audio:disabled { opacity: .3; cursor: not-allowed; }
+.listener-duration {
+  display: flex; align-items: center; gap: 8px; margin: 6px 0;
+  font-size: 11px; color: var(--muted);
+}
+.listener-duration input[type=range] { flex: 1; }
+.listener-duration .dur-val { color: var(--text); font-weight: 600; min-width: 42px; }
+.listener-status {
+  font-size: 11px; color: var(--muted); margin: 6px 0 4px;
+  display: flex; align-items: center; gap: 6px;
+}
+.listener-status .dot {
+  width: 7px; height: 7px; border-radius: 50%; display: inline-block;
+}
+.listener-status .dot.buffering { background: var(--warning); }
+.listener-status .dot.playing   { background: var(--success); animation: pulse 1.2s infinite; }
+.listener-status .dot.cadence   { background: #c084fc; }
+.listener-status .dot.stopped   { background: var(--muted); }
+.voice-meters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 10px; margin-top: 6px; }
+.voice-meter { font-size: 10px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.voice-meter .meter-label { min-width: 20px; }
+.voice-meter .meter-bar {
+  flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden;
+}
+.voice-meter .meter-fill {
+  height: 100%; background: var(--accent); border-radius: 3px;
+  transition: width 0.08s linear; width: 0%;
+}
+.voice-meter.v5 .meter-fill { background: var(--success); }
+.voice-meter.v6 .meter-fill { background: #c084fc; }
 </style>
 </head>
 <body>
@@ -397,6 +448,33 @@ textarea#notes:focus { border-color: var(--accent); outline: none; }
       <button id="btn-reset-cache">↺&nbsp;&nbsp;Reset cache</button>
     </div>
 
+    <!-- Diagnostic Listener -->
+    <div class="listener-panel">
+      <div class="section-label" style="margin-top:0">🎵 Diagnostic Listener</div>
+      <div class="listener-controls">
+        <button class="btn-listen" id="btn-listen" disabled>▶ Listen</button>
+        <button class="btn-stop-audio" id="btn-stop-audio" disabled>■ Stop</button>
+      </div>
+      <div class="listener-duration">
+        <span>5 min</span>
+        <input type="range" id="audio-duration" min="5" max="20" value="10" step="1">
+        <span class="dur-val" id="audio-dur-val">10 min</span>
+        <span>20 min</span>
+      </div>
+      <div class="listener-status" id="listener-status">
+        <span class="dot stopped"></span>
+        <span id="listener-status-text">Run the simulation first</span>
+      </div>
+      <div class="voice-meters" id="voice-meters">
+        <div class="voice-meter v1"><span class="meter-label">V1</span><div class="meter-bar"><div class="meter-fill" id="vm1"></div></div></div>
+        <div class="voice-meter v2"><span class="meter-label">V2</span><div class="meter-bar"><div class="meter-fill" id="vm2"></div></div></div>
+        <div class="voice-meter v3"><span class="meter-label">V3</span><div class="meter-bar"><div class="meter-fill" id="vm3"></div></div></div>
+        <div class="voice-meter v4"><span class="meter-label">V4</span><div class="meter-bar"><div class="meter-fill" id="vm4"></div></div></div>
+        <div class="voice-meter v5"><span class="meter-label">V5</span><div class="meter-bar"><div class="meter-fill" id="vm5"></div></div></div>
+        <div class="voice-meter v6"><span class="meter-label">V6</span><div class="meter-bar"><div class="meter-fill" id="vm6"></div></div></div>
+      </div>
+    </div>
+
     <div class="section-label" id="log-label" style="display:none">Progress</div>
     <div class="progress-log" id="progress-log"></div>
   </main>
@@ -428,6 +506,7 @@ textarea#notes:focus { border-color: var(--accent); outline: none; }
 <!-- ============================================================
      JAVASCRIPT
      ============================================================ -->
+<script src="diagnostic_listener.js"></script>
 <script>
 'use strict';
 
@@ -1007,6 +1086,9 @@ function applyResults(results) {
   // Restore notes
   if (results.notes) document.getElementById('notes').value = results.notes;
 
+  // Enable Diagnostic Listener if audio_states present
+  enableListenButton(results.audio_states);
+
   renderChartTabs();
   // Show first available chart
   if (!activeChartTab) {
@@ -1110,7 +1192,92 @@ function escHtml(str) {
 }
 
 /* ============================================================
-   12. BOOT
+   12. DIAGNOSTIC LISTENER WIRING
+   ============================================================ */
+const dl = new DiagnosticListener();
+let dlReady = false;
+
+const btnListen   = document.getElementById('btn-listen');
+const btnStopAud  = document.getElementById('btn-stop-audio');
+const durSlider   = document.getElementById('audio-duration');
+const durVal      = document.getElementById('audio-dur-val');
+const statusDot   = document.querySelector('#listener-status .dot');
+const statusText  = document.getElementById('listener-status-text');
+const meterFills  = [
+  document.getElementById('vm1'), document.getElementById('vm2'),
+  document.getElementById('vm3'), document.getElementById('vm4'),
+  document.getElementById('vm5'), document.getElementById('vm6'),
+];
+
+durSlider.addEventListener('input', () => {
+  durVal.textContent = durSlider.value + ' min';
+});
+
+function enableListenButton(audioData) {
+  if (!audioData || !audioData.states || audioData.states.length === 0) {
+    btnListen.disabled = true;
+    statusText.textContent = audioData ? 'Re-run the simulation to enable audio.' : 'Run the simulation first';
+    statusDot.className = 'dot stopped';
+    dlReady = false;
+    return;
+  }
+  try {
+    dl.init(audioData);
+    dlReady = true;
+    btnListen.disabled = false;
+    statusText.textContent = 'Ready — click Listen';
+    statusDot.className = 'dot stopped';
+  } catch (e) {
+    btnListen.disabled = true;
+    statusText.textContent = e.message;
+    dlReady = false;
+  }
+}
+
+btnListen.addEventListener('click', () => {
+  if (!dlReady) return;
+  const mins = parseInt(durSlider.value, 10) || 10;
+  dl.play(mins * 60 * 1000);
+  btnListen.disabled  = true;
+  btnStopAud.disabled = false;
+});
+
+btnStopAud.addEventListener('click', () => {
+  dl.stop();
+  btnListen.disabled  = false;
+  btnStopAud.disabled = true;
+});
+
+dl.onStateChange = (state) => {
+  statusDot.className = 'dot ' + state;
+  if (state === 'playing') {
+    statusText.textContent = 'Playing…';
+    btnListen.disabled  = true;
+    btnStopAud.disabled = false;
+  } else if (state === 'cadence') {
+    statusText.textContent = 'Resolving…';
+  } else if (state === 'stopped') {
+    statusText.textContent = dlReady ? 'Ready — click Listen' : 'Run the simulation first';
+    btnListen.disabled  = !dlReady;
+    btnStopAud.disabled = true;
+    meterFills.forEach(m => { if (m) m.style.width = '0%'; });
+  }
+};
+
+dl.onProgress = (progress, elapsed, levels) => {
+  const mins = Math.floor(elapsed / 60);
+  const secs = Math.floor(elapsed % 60);
+  const pct  = Math.round(progress * 100);
+  statusText.textContent = `Playing… ${mins}:${String(secs).padStart(2,'0')} (${pct}%)`;
+  for (let i = 0; i < 6; i++) {
+    if (meterFills[i]) {
+      meterFills[i].style.width = Math.round((levels[i] ?? 0) * 100) + '%';
+    }
+  }
+};
+
+/* ============================================================
+   13. BOOT
    ============================================================ */
 window.addEventListener('DOMContentLoaded', init);
 </script>

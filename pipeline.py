@@ -857,6 +857,14 @@ def run_pipeline(
                 tb,
             )
 
+    # ── Extract audio states for Diagnostic Listener ──────────────────────
+    audio_data = None
+    try:
+        from audio_extractor import build_audio_states
+        audio_data = build_audio_states(upstream, params)
+    except Exception:
+        pass   # audio extraction is optional — never block the pipeline
+
     # ── Write combined results JSON ──────────────────────────────────────
     total_elapsed = time.time() - pipeline_start
     run_ts = time.strftime("%Y-%m-%dT%H:%M:%S")
@@ -868,6 +876,7 @@ def run_pipeline(
         "results":              all_results,
         "summaries":            all_summaries,
         "charts":               all_charts,
+        "audio_states":         audio_data,
         "total_runtime_seconds": round(total_elapsed, 2),
         "notes":                "",
     }
