@@ -22,7 +22,7 @@
     "supply_std": 2469.873842864574
   },
   "ga_config": {
-    "pop_size": 30,
-    "n_gen": 20
+    "pop_size": 15,
+    "n_gen": 10
   }
 }
